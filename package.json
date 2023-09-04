@@ -1,0 +1,29 @@
+{
+  "name": "@dwijbavisi/arbitrary-factory",
+  "version": "1.0.0",
+  "description": "Arbitrary data generator.",
+  "main": "build/index.js",
+  "types": "build/index.d.ts",
+  "type": "module",
+  "devDependencies": {
+    "@types/node": "^20.5.7",
+    "esbuild": "0.19.2",
+    "typescript": "^5.2.2"
+  },
+  "scripts": {
+    "build": "tsc -p spec/tsconfig.json",
+    "build:dist": "node spec/esbuild.mjs",
+    "build:test": "tsc -p __tests__/tsconfig.json",
+    "test": "node __tests__/node.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TaciturnCoder/arbitrary-factory.git"
+  },
+  "author": "Dwij Bavisi",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/TaciturnCoder/arbitrary-factory/issues"
+  },
+  "homepage": "https://github.com/TaciturnCoder/arbitrary-factory#readme"
+}
