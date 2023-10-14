@@ -4,11 +4,11 @@
 
 ### Unplanned
 
-- [ ] Implement proper test cases and testing tools
+- [x] Implement proper test cases and testing tools
 - [ ] Add examples and tutorials
 - [ ] Add documentations
-  - [ ] in-line comments
-  - [ ] Developer guide
+  - [x] in-line comments
+  - [x] Developer guide
   - [ ] User guide
 - [ ] Implement CI/CD
-- [ ] Optimized/minified builds for production
+- [x] Optimized/minified builds for production

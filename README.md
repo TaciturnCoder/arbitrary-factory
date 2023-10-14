@@ -1,4 +1,4 @@
-# arbitrary-factory
+# Arbitrary Factory
 
 Arbitrary data generator
 
@@ -7,7 +7,3 @@ Arbitrary data generator
 ```bash
 npm i @dwijbavisi/arbitrary-factory
 ```
-
-# Roadmap
-See [./docs/roadmap.md](./docs/roadmap.md) for more information on proposed
-roadmap and project goals.

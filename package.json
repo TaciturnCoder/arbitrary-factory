@@ -1,20 +1,28 @@
 {
   "name": "@dwijbavisi/arbitrary-factory",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Arbitrary data generator.",
   "main": "build/index.js",
   "types": "build/index.d.ts",
+  "exports": {
+    ".": "./build/index.js",
+    "./randomizer": "./build/src/randomizer.js",
+    "./mimic": "./build/src/mimic.js",
+    "./lib": "./build/lib.js"
+  },
   "type": "module",
   "devDependencies": {
     "@types/node": "^20.5.7",
     "esbuild": "0.19.2",
-    "typescript": "^5.2.2"
+    "typescript": "^5.2.2",
+    "typedoc": "^0.25.2"
   },
   "scripts": {
-    "build": "tsc -p spec/tsconfig.json",
+    "build": "tsc -p tsconfig.json",
     "build:dist": "node spec/esbuild.mjs",
-    "build:test": "tsc -p __tests__/tsconfig.json",
-    "test": "node __tests__/node.js"
+    "build:docs": "typedoc --tsconfig tsconfig.json",
+    "build:test": "tsc -p spec/__tests__/tsconfig.json",
+    "test": "node --experimental-test-coverage spec/__tests__/build/index.spec.js"
   },
   "repository": {
     "type": "git",

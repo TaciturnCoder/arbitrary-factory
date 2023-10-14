@@ -1,66 +1,161 @@
+/**
+ * Factory function for arbitrary data.
+ * A constant data, a function, or an Arbitrary.
+ * @param source Source of randomness.
+ * @returns Arbitrary data.
+ * @typeParam T Type of arbitrary data.
+ */
 declare type Factory<T> = T | ((source?: Arbitrary) => T) | Arbitrary<T>;
 
 /**
- * Arbitrary data generator.
+ * Check if factory is a constant data.
+ * @param factory Factory function for arbitrary data.
+ * @returns False if factory is a function or an Arbitrary, true otherwise.
+ * @typeParam T Type of arbitrary data.
  */
-export interface Arbitrary<T = any>
-  extends Function, Iterable<T>, Iterator<T> {
-  // Call signature.
+function isConst<T>(factory: Factory<T>): factory is T {
+  return !(factory instanceof Arbitrary || factory instanceof Function);
+}
+
+// ------------------------------------------------------------------
+// Interface for Arbitrary data generator.
+// ------------------------------------------------------------------
+export interface Arbitrary<T = unknown> extends Iterator<T>, Iterable<T> {
+  /**
+   * Arbitrary is callable.
+   * @param source Source of randomness.
+   * @returns Arbitrary data.
+   */
   (source?: Arbitrary): T;
-  [Symbol.iterator](): Iterator<T>;
+
+  /**
+   * Generate stream of arbitrary data.
+   * @returns Next arbitrary data in stream.
+   */
   next(): IteratorYieldResult<T>;
 
-  // Stream operations.
-  map<U, S extends Arbitrary<U>>(transform: (arbitrary: T) => U): S;
-  filter<S extends Arbitrary<T>>(predicate: (arbitrary: T) => boolean): S;
+  /**
+   * Generate stream of arbitrary data.
+   * @returns Generator for accessing stream of arbitrary data.
+   */
+  [Symbol.iterator](): Iterator<T>;
 
-  // Sampling methods.
-  sample(count?: number): T[];
-  repeat<S extends Arbitrary<T[]>>(times: number): S;
+  /**
+   * Transform stream of arbitrary data.
+   * @param transform Function to transform arbitrary data.
+   * @returns Arbitrary data generator.
+   * @typeParam U Type of transformed arbitrary data.
+   * 
+   * @remarks
+   * Transform function is evaluated lazily.
+   */
+  map<U>(transform: (arbitrary: T) => U): Arbitrary<U>;
 
-  // Presentation.
+  /**
+   * Filter stream of arbitrary data.
+   * @param predicate Function to filter arbitrary data.
+   * @returns Arbitrary data generator.
+   * 
+   * @remarks
+   * Filter function is evaluated lazily.
+   * Strict filters may cause long running time.
+   */
+  filter(predicate: (arbitrary: T) => boolean): Arbitrary<T>;
+
+  /**
+   * Generate a sample of arbitrary data.
+   * @param count Number of samples to generate.
+   * @param source Source of randomness.
+   * @returns Array of arbitrary data.
+   * 
+   * @remarks
+   * Sample is generated eagerly.
+   */
+  sample(count?: Factory<number>, source?: Arbitrary): T[];
+
+  /**
+   * Generate a sample of arbitrary data, but lazily.
+   * @param times Number of times to repeat arbitrary generator.
+   * @returns Arbitrary data generator.
+   * 
+   * @remarks
+   * Sample is generated lazily.
+   */
+  repeat(times: Factory<number>): Arbitrary<T[]>;
+
+  /**
+   * Type casting support for string format.
+   * @returns String representation of arbitrary data.
+   */
   toString(): string;
+
+  /**
+   * Type casting support for number format.
+   * @returns Number representation of arbitrary data.
+   */
   valueOf(): number;
-  // [Symbol.toStringTag](): string;
+
+  /**
+   * Type casting support for specified format.
+   * @param hint Type casting hint.
+   * @returns Arbitrary data in specified format.
+   */
   [Symbol.toPrimitive](hint: string): T | string | number;
 }
 
+// ------------------------------------------------------------------
+// Arbitrary data generator.
+// ------------------------------------------------------------------
 /**
  * Arbitrary data generator.
- * Uses a factory function to generate arbitrary data.
+ * Requires a factory function for arbitrary data.
  * Factory function may accept a source of randomness.
+ * @typeParam T Type of arbitrary data.
  */
 export class Arbitrary<T> implements Arbitrary<T> {
+  // Functional Requirement FR1, FR4
+  /**
+   * Create arbitrary data generator.
+   * @param factory Factory function for arbitrary data.
+   * @param source Source of randomness.
+   * @returns Arbitrary data generator.
+   */
   constructor(factory: Factory<T>, source?: Arbitrary) {
-    let f: Factory<T> = factory;
-    if (!(factory instanceof Arbitrary || factory instanceof Function)) {
-      f = () => factory;
+    // Assume factory is callable.
+    let f: (source?: Arbitrary) => T;
+
+    if (isConst(factory)) {
+      // Fallback to constant factory.
+      // Clone factory to prevent side effects.
+      f = () => structuredClone(factory);
+    } else if (source) {
+      // Bind source of randomness to factory.
+      f = (s?: Arbitrary) => factory(s ?? source);
     } else {
-      if (source) {
-        f = (s?: Arbitrary) => factory(s ?? source);
-      }
+      // Assumtion holds...
+      f = factory;
     }
     return Object.setPrototypeOf(f, new.target.prototype);
   }
 
-  // Generate stream of arbitrary data.
-  public *[Symbol.iterator](): Iterator<T> {
-    while (true) yield this();
-  }
-
-  // Generate stream of arbitrary data.
+  // Functional Requirement FR1
   public next(): IteratorYieldResult<T> {
     return { done: false, value: this() };
   }
 
-  // Manipulate stream of arbitrary data.
-  public map<U, S extends Arbitrary<U>>(transform: (arbitrary: T) => U): S {
-    const factory = (source?: Arbitrary) => transform(this(source));
-    return new Arbitrary(factory) as S;
+  // Functional Requirement FR1
+  public *[Symbol.iterator](): Iterator<T> {
+    while (true) yield this();
   }
 
-  // Filter stream of arbitrary data.
-  public filter<S extends Arbitrary<T>>(predicate: (arbitrary: T) => boolean): S {
+  // Functional Requirement FR2, FR4
+  public map<U>(transform: (arbitrary: T) => U): Arbitrary<U> {
+    const factory = (source?: Arbitrary) => transform(this(source));
+    return new Arbitrary(factory);
+  }
+
+  // Functional Requirement FR3, FR4
+  public filter(predicate: (arbitrary: T) => boolean): Arbitrary<T> {
     const factory = (source?: Arbitrary) => {
       let arbitrary: T;
       do {
@@ -68,38 +163,34 @@ export class Arbitrary<T> implements Arbitrary<T> {
       } while (!predicate(arbitrary));
       return arbitrary;
     };
-    return new Arbitrary(factory) as S;
+    return new Arbitrary(factory);
   }
 
-  // Generate multiple arbitrary data in a single call.
-  public sample(count: number = 1): T[] {
-    return Array.from({ length: count }, () => this());
+  // Functional Requirement FR4, FR5
+  public sample(count: Factory<number> = 1, source?: Arbitrary): T[] {
+    const c = (isConst(count)) ? count : count();
+    return Array.from({ length: c }, () => this(source));
   }
 
-  // Repeat arbitrary data generation.
-  public repeat<S extends Arbitrary<T[]>>(times: number): S {
-    return new Arbitrary(() => this.sample(times)) as S;
+  // Functional Requirement FR4, FR6
+  public repeat(times: Factory<number>): Arbitrary<T[]> {
+    return new Arbitrary((source?: Arbitrary) => this.sample(times, source));
   }
 
-  // String representation.
+  // Functional Requirement FR7
   public toString(): string {
-    return `${this()}`;
+    return String(this());
   }
 
-  // Numeric representation (not recommended unless T is a number).
+  // Functional Requirement FR7
   public valueOf(): number {
     return Number(this());
   }
 
-  // String representation.
-  public get [Symbol.toStringTag](): string {
-    return this.toString();
-  }
-
-  // Modern type conversion.
+  // Functional Requirement FR7
   public [Symbol.toPrimitive](hint: string): T | string | number {
-    if (hint === "string") return this.toString();
-    if (hint === "number") return this.valueOf();
+    if (hint === "string") return String(this());
+    if (hint === "number") return Number(this());
     return this(); // hint === "default"
   }
 }
